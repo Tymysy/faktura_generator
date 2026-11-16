@@ -208,7 +208,7 @@ function calc(){
   let html='';
   if(S.vat){
     Object.keys(groups).sort((a,b)=>b-a).forEach(r=>{
-      const b=r2(groups[r].b),v=r2(b*r/100);total+=b+v;
+      const b=r2(groups[r].b),v=Math.round(b*r/100);total+=b+v;
       html+=`<tr><td>${r} %</td><td class="n">${fmt(b)}</td><td class="n">${fmt(v)}</td><td class="n">${fmt(b+v)}</td></tr>`;
     });
     total=r2(total);
