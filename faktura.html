@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faktura – generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#16181d;--mute:#8a8f98;--line:#e7e8eb;--acc:#1f4d3f;--accbg:#eef4f1}
+*{box-sizing:border-box}
+body{margin:0;background:#eceae6;font:13px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink)}
+[hidden]{display:none!important}
+body:not(.vat) .only-vat{display:none}
+body.vat .only-nonvat{display:none}
+
+.bar{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 24px;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar .hint{color:var(--mute);font-size:12px}
+.grp{display:flex;gap:8px;align-items:center}
+.seg{display:flex;background:#f0f1f3;border-radius:9px;padding:3px}
+.seg button{border:0;background:none;padding:6px 14px;border-radius:7px;font:500 13px Inter,system-ui,sans-serif;color:var(--mute);cursor:pointer}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.btn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 14px;border-radius:9px;font:500 13px Inter,system-ui,sans-serif;cursor:pointer}
+.btn:hover{background:#f6f7f8}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.pri:hover{background:#18403a}
+
+.wrap{overflow-x:auto;padding:0 12px 40px}
+.paper{width:210mm;min-height:296.5mm;margin:28px auto;background:#fff;padding:16mm;display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(0,0,0,.06),0 12px 40px rgba(0,0,0,.08)}
+
+[contenteditable]{outline:none;border-radius:3px;padding:0 3px;margin:0 -3px;min-width:12px;white-space:pre-wrap;transition:background .15s}
+[contenteditable]:hover{background:#f5f6f6}
+[contenteditable]:focus{background:var(--accbg);box-shadow:0 0 0 2px #cfe0d8}
+[contenteditable]:empty::before{content:attr(data-ph);color:#c3c6cb}
+.exp{--x:0}
+.exp .paper{box-shadow:none;margin:0}
+.exp [contenteditable]:empty::before{content:""}
+.exp [contenteditable]{background:none!important;box-shadow:none!important}
+
+.lbl{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);font-weight:500}
+.head{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:18px;border-bottom:2px solid var(--ink)}
+h1{margin:0;font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+h1 span{font-size:15px;font-weight:400;color:var(--mute);letter-spacing:0}
+.numbox{text-align:right}
+.numbox .v{font-size:18px;font-weight:600}
+
+.parties{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:24px}
+.party .nm{font-size:15px;font-weight:600;margin-top:6px}
+.party .ad{margin:2px 0 8px}
+.kv{display:flex;gap:6px}
+.kv .k{color:var(--mute);min-width:34px}
+.small{color:var(--mute);font-size:12px;margin-top:8px}
+
+.payrow{display:grid;grid-template-columns:1fr auto;gap:24px;margin-top:26px;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);align-items:center}
+.meta{display:grid;grid-template-columns:auto 1fr;gap:3px 22px}
+.meta .k{color:var(--mute)}
+.meta .v{font-weight:500}
+#qrw{text-align:center}
+#qr{width:96px;height:96px;margin:0 auto 4px}
+#qr img,#qr canvas{display:block;width:96px;height:96px}
+#ibn{font-size:11px;color:var(--mute)}
+
+table{width:100%;border-collapse:collapse;margin-top:24px}
+th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:500;padding:0 6px 8px;border-bottom:1px solid var(--ink)}
+td{padding:9px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th.n,td.n{text-align:right}
+td.n{white-space:nowrap}
+td:first-child,th:first-child{padding-left:0}
+td.n:last-of-type,th.n:last-of-type{padding-right:0}
+td .c{display:inline-block;min-width:24px}
+td:first-child .c{display:block}
+select{appearance:none;-webkit-appearance:none;border:0;background:none;font:inherit;text-align:right;padding:0;cursor:pointer;color:inherit}
+td.t{font-weight:500}
+th.x,td.x{width:0;padding:0;border:0;position:relative}
+.del{position:absolute;left:12px;top:8px;width:20px;height:20px;border:0;border-radius:50%;background:#f0f1f3;color:var(--mute);cursor:pointer;font-size:14px;line-height:1;opacity:0}
+tr:hover .del{opacity:1}
+.del:hover{background:#fde8e8;color:#c0392b}
+.add{margin-top:10px;border:0;background:none;color:var(--acc);font:500 13px Inter,system-ui,sans-serif;cursor:pointer;padding:4px 0}
+
+.totals{margin-top:22px;margin-left:auto;width:62%}
+.totals table{margin:0 0 14px}
+.totals td,.totals th{padding:6px}
+.due{display:flex;justify-content:space-between;align-items:baseline;background:var(--accbg);border-radius:10px;padding:14px 18px}
+.due .a{font-size:22px;font-weight:600;color:var(--acc);white-space:nowrap}
+.spacer{flex:1;min-height:30px}
+.foot{display:flex;justify-content:space-between;gap:30px;align-items:flex-end;color:var(--mute);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
+.foot .note{flex:1;color:var(--ink)}
+
+@media print{.bar,.add,.del{display:none}body{background:#fff}.paper{box-shadow:none;margin:0}}
+</style>
+</head>
+<body class="vat">
+
+<div class="bar">
+  <div class="grp">
+    <div class="seg"><button id="bv" class="on">Plátce DPH</button><button id="bn">Neplátce DPH</button></div>
+    <span class="hint">Klikněte na libovolný text a upravte ho</span>
+  </div>
+  <div class="grp">
+    <button class="btn" id="new">Nová faktura</button>
+    <button class="btn pri" id="pdf">Stáhnout PDF</button>
+  </div>
+</div>
+
+<div class="wrap">
+<div class="paper" id="paper">
+
+  <div class="head">
+    <h1>Faktura <span class="only-vat">– daňový doklad</span></h1>
+    <div class="numbox"><div class="lbl">Číslo dokladu</div><div class="v" data-k="num" contenteditable>2026001</div></div>
+  </div>
+
+  <div class="parties">
+    <div class="party">
+      <div class="lbl">Dodavatel</div>
+      <div class="nm" data-k="sn" contenteditable data-ph="Jméno / firma">Jan Novák</div>
+      <div class="ad" data-k="sa" data-ml contenteditable data-ph="Adresa">Dlouhá 12
+110 00 Praha 1</div>
+      <div class="kv"><span class="k">IČO</span><span data-k="sic" contenteditable data-ph="IČO">12345678</span></div>
+      <div class="kv only-vat"><span class="k">DIČ</span><span data-k="sdic" contenteditable data-ph="DIČ">CZ12345678</span></div>
+      <div class="small" data-k="reg" data-ml contenteditable data-ph="Zápis v rejstříku (nepovinné)">Fyzická osoba zapsaná v živnostenském rejstříku.</div>
+      <div class="small only-nonvat" data-k="nonvat" contenteditable>Nejsem plátce DPH.</div>
+    </div>
+    <div class="party">
+      <div class="lbl">Odběratel</div>
+      <div class="nm" data-k="cn" contenteditable data-ph="Jméno / firma">Firma s.r.o.</div>
+      <div class="ad" data-k="ca" data-ml contenteditable data-ph="Adresa">Hlavní 5
+702 00 Ostrava</div>
+      <div class="kv"><span class="k">IČO</span><span data-k="cic" contenteditable data-ph="IČO">87654321</span></div>
+      <div class="kv"><span class="k">DIČ</span><span data-k="cdic" contenteditable data-ph="DIČ (nepovinné)"></span></div>
+    </div>
+  </div>
+
+  <div class="payrow">
+    <div class="meta">
+      <span class="k">Datum vystavení</span><span class="v" data-k="dv" contenteditable></span>
+      <span class="k only-vat">Datum uskut. zdan. plnění</span><span class="v only-vat" data-k="duzp" contenteditable></span>
+      <span class="k">Datum splatnosti</span><span class="v" data-k="ds" contenteditable></span>
+      <span class="k">Forma úhrady</span><span class="v" data-k="pay" contenteditable>Převodem</span>
+      <span class="k">Číslo účtu</span><span class="v" data-k="acc" contenteditable data-ph="123456789/0800">1234567890/0800</span>
+      <span class="k">Variabilní symbol</span><span class="v" data-k="vs" contenteditable>2026001</span>
+      <span class="k">Měna</span><span class="v" data-k="cur" contenteditable>Kč</span>
+    </div>
+    <div id="qrw" hidden><div id="qr"></div><div class="lbl">QR platba</div><div id="ibn"></div></div>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th>Popis</th><th class="n">Množství</th><th>MJ</th>
+      <th class="n">Cena / MJ<span class="only-vat"> bez DPH</span></th>
+      <th class="n only-vat">DPH</th>
+      <th class="n">Celkem<span class="only-vat"> bez DPH</span></th><th class="x"></th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <button class="add" id="add" data-html2canvas-ignore="true">+ Přidat řádek</button>
+
+  <div class="totals">
+    <table class="only-vat">
+      <thead><tr><th>Sazba</th><th class="n">Základ</th><th class="n">DPH</th><th class="n">Celkem</th></tr></thead>
+      <tbody id="recap"></tbody>
+    </table>
+    <div class="due"><span class="lbl">Celkem k úhradě</span><span class="a" id="due">0,00</span></div>
+  </div>
+
+  <div class="spacer"></div>
+  <div class="foot">
+    <div class="note" data-k="note" data-ml contenteditable data-ph="Poznámka">Děkuji za spolupráci.</div>
+    <div>Vystavil: <span data-k="by" contenteditable data-ph="Jméno">Jan Novák</span></div>
+  </div>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const KEY='faktura-cz-v1';
+const num=v=>{const n=parseFloat(String(v).replace(/[\s\u00a0]/g,'').replace(',','.'));return isNaN(n)?0:n};
+const r2=n=>Math.round((n+Number.EPSILON)*100)/100;
+const fmt=n=>n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fd=d=>`${d.getDate()}. ${d.getMonth()+1}. ${d.getFullYear()}`;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const val=k=>($(`[data-k=${k}]`).innerText||'').trim();
+const set=(k,v)=>{$(`[data-k=${k}]`).textContent=v};
+const blank=()=>({d:'',q:'1',u:'ks',p:'',r:21});
+let S={vat:true,items:[{d:'Návrh a vývoj webových stránek',q:'1',u:'ks',p:'12000',r:21},{d:'Správa a hosting (měsíc)',q:'3',u:'měs.',p:'450',r:21}]};
+
+function rowHTML(it,i){
+  return `<tr data-i="${i}"><td><div class="c" data-f="d" data-ml contenteditable data-ph="Popis položky">${esc(it.d)}</div></td>
+  <td class="n"><div class="c" data-f="q" contenteditable>${esc(it.q)}</div></td>
+  <td><div class="c" data-f="u" contenteditable>${esc(it.u)}</div></td>
+  <td class="n"><div class="c" data-f="p" contenteditable data-ph="0">${esc(it.p)}</div></td>
+  <td class="n only-vat"><select data-f="r">${[21,12,0].map(v=>`<option ${v==it.r?'selected':''}>${v}</option>`).join('')}</select> %</td>
+  <td class="n t"></td>
+  <td class="x" data-html2canvas-ignore="true"><button class="del" data-del title="Smazat řádek">×</button></td></tr>`;
+}
+function render(){$('#rows').innerHTML=S.items.map(rowHTML).join('');calc()}
+
+function calc(){
+  const cur=val('cur');let groups={},total=0;
+  $$('#rows tr').forEach((tr,i)=>{
+    const it=S.items[i],b=r2(num(it.q)*num(it.p));
+    tr.querySelector('.t').textContent=fmt(b);
+    if(S.vat){(groups[it.r]=groups[it.r]||{b:0}).b+=b}else total+=b;
+  });
+  let html='';
+  if(S.vat){
+    Object.keys(groups).sort((a,b)=>b-a).forEach(r=>{
+      const b=r2(groups[r].b),v=r2(b*r/100);total+=b+v;
+      html+=`<tr><td>${r} %</td><td class="n">${fmt(b)}</td><td class="n">${fmt(v)}</td><td class="n">${fmt(b+v)}</td></tr>`;
+    });
+    total=r2(total);
+  }
+  $('#recap').innerHTML=html;
+  $('#due').textContent=fmt(total)+' '+cur;
+  qr(total);
+}
+
+function iban(a){
+  a=a.replace(/\s/g,'').toUpperCase();
+  if(/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(a))return a;
+  const m=a.match(/^(?:(\d{1,6})-)?(\d{2,10})\/(\d{4})$/);if(!m)return'';
+  const b=m[3]+(m[1]||'').padStart(6,'0')+m[2].padStart(10,'0');
+  return 'CZ'+String(98n-BigInt(b+'123500')%97n).padStart(2,'0')+b;
+}
+function qr(total){
+  const ib=iban(val('acc')),c=val('cur');
+  const cc=/eur|€/i.test(c)?'EUR':/kč|czk/i.test(c)?'CZK':'';
+  $('#qr').innerHTML='';
+  if(!ib||!cc||total<=0||!window.QRCode){$('#qrw').hidden=true;return}
+  $('#qrw').hidden=false;
+  $('#ibn').textContent=ib.replace(/(.{4})/g,'$1 ').trim();
+  const vs=val('vs').replace(/\D/g,'').slice(0,10);
+  const msg=('FAKTURA '+val('num')).replace(/[^A-Za-z0-9 ]/g,'');
+  new QRCode($('#qr'),{text:`SPD*1.0*ACC:${ib}*AM:${total.toFixed(2)}*CC:${cc}${vs?'*X-VS:'+vs:''}*MSG:${msg}`,width:96,height:96,correctLevel:QRCode.CorrectLevel.M});
+}
+
+function save(){
+  try{const f={};$$('[data-k]').forEach(e=>f[e.dataset.k]=e.innerText.replace(/\n$/,''));
+    localStorage.setItem(KEY,JSON.stringify({vat:S.vat,items:S.items,f}))}catch(e){}
+}
+function load(){
+  try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(!d)return false;
+    S.vat=d.vat;S.items=d.items;Object.entries(d.f).forEach(([k,v])=>{const e=$(`[data-k=${k}]`);if(e)e.textContent=v});return true}catch(e){return false}
+}
+function mode(){
+  document.body.classList.toggle('vat',S.vat);
+  $('#bv').classList.toggle('on',S.vat);$('#bn').classList.toggle('on',!S.vat);
+}
+function dates(){
+  const t=new Date(),d=new Date(t.getTime()+14*864e5);
+  set('dv',fd(t));set('duzp',fd(t));set('ds',fd(d));
+}
+
+// události
+const paper=$('#paper');
+paper.addEventListener('input',e=>{
+  const t=e.target,tr=t.closest('tr[data-i]');
+  if(t.dataset.f&&tr){S.items[tr.dataset.i][t.dataset.f]=t.tagName==='SELECT'?+t.value:t.innerText.replace(/\n$/,'')}
+  calc();save();
+});
+paper.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.isContentEditable&&e.target.dataset.ml===undefined)e.preventDefault()});
+paper.addEventListener('paste',e=>{if(e.target.isContentEditable){e.preventDefault();document.execCommand('insertText',false,e.clipboardData.getData('text/plain'))}});
+paper.addEventListener('click',e=>{
+  if(e.target.dataset.del!==undefined){
+    S.items.splice(e.target.closest('tr').dataset.i,1);if(!S.items.length)S.items.push(blank());render();save();
+  }
+});
+$('#add').onclick=()=>{S.items.push(blank());render();save();
+  const r=$$('#rows tr').pop();r&&r.querySelector('[data-f=d]').focus()};
+$('#bv').onclick=()=>{S.vat=true;mode();calc();save()};
+$('#bn').onclick=()=>{S.vat=false;mode();calc();save()};
+$('#new').onclick=()=>{
+  if(!confirm('Vytvořit novou fakturu? Údaje dodavatele a účet zůstanou zachovány.'))return;
+  const n=val('num').replace(/\d+$/,m=>String(+m+1).padStart(m.length,'0'));
+  set('num',n);set('vs',n.replace(/\D/g,''));dates();
+  ['cn','ca','cic','cdic'].forEach(k=>set(k,''));
+  S.items=[blank()];render();save();
+};
+$('#pdf').onclick=async()=>{
+  if(!window.html2pdf){alert('PDF knihovna se nenačetla – zkontrolujte připojení k internetu.');return}
+  document.activeElement&&document.activeElement.blur();
+  scrollTo(0,0);document.body.classList.add('exp');
+  const name='Faktura-'+(val('num').replace(/[^\w-]+/g,'')||'bez-cisla')+'.pdf';
+  try{
+    await html2pdf().set({margin:0,filename:name,image:{type:'jpeg',quality:.98},
+      html2canvas:{scale:2,useCORS:true,scrollY:0,scrollX:0},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(paper).save();
+  }finally{document.body.classList.remove('exp')}
+};
+
+// start
+if(!load())dates();
+mode();render();save();
+</script>
+</body>
+</html>
